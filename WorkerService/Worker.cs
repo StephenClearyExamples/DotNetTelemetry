@@ -2,15 +2,18 @@ using RabbitMQ.Client.Events;
 using RabbitMQ.Client;
 using System.Text;
 using System.Text.Json;
-using RabbitMQ.Client.Exceptions;
 using Polly.Retry;
 using Polly;
-using System.Threading;
+using System.Diagnostics;
+using Nito.Logging;
 
 namespace WorkerService;
 
 public class Worker : BackgroundService
 {
+	public const string ActivitySourceName = "WorkerService.Worker";
+
+	private static readonly ActivitySource _activitySource = new(ActivitySourceName);
     private readonly ILogger<Worker> _logger;
 
     public Worker(ILogger<Worker> logger)
@@ -47,6 +50,16 @@ public class Worker : BackgroundService
 		var consumer = new EventingBasicConsumer(channel);
 		consumer.Received += (model, ea) =>
 		{
+			// https://github.com/open-telemetry/semantic-conventions/blob/main/docs/messaging/messaging-spans.md#span-name
+			using var activity = _activitySource.StartActivity($"{Messages.Constants.WeatherControlRequestQueue} receive");
+			
+			// https://github.com/open-telemetry/semantic-conventions/blob/main/docs/messaging/messaging-spans.md#messaging-attributes
+			// https://github.com/open-telemetry/semantic-conventions/blob/main/docs/messaging/rabbitmq.md
+			activity?.SetTag("server.address", "localhost");
+			activity?.SetTag("messaging.destination.name", Messages.Constants.WeatherControlRequestQueue);
+
+			using var _ = _logger.BeginDataScope(("QueueServer", "localhost"), ("QueueName", Messages.Constants.WeatherControlRequestQueue));
+
 			var body = ea.Body.ToArray();
 			var message = Encoding.UTF8.GetString(body);
 			var json = JsonSerializer.Deserialize<Messages.WeatherForecastRequest>(message) ?? throw new Exception("Bad message");

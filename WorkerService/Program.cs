@@ -3,7 +3,10 @@ using WorkerService;
 
 var builder = Host.CreateApplicationBuilder(args);
 
-builder.ConfigureOpenTelemetry();
+builder.ConfigureOpenTelemetry()
+	.Services.AddOpenTelemetry().WithTracing(
+		tracing => tracing.AddSource(Worker.ActivitySourceName)
+	);
 builder.Services.AddOpenTelemetry().UseOtlpExporter();
 
 builder.Services.AddHostedService<Worker>();
