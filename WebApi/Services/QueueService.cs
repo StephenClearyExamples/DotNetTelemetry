@@ -1,4 +1,5 @@
-﻿using RabbitMQ.Client;
+﻿using Messages;
+using RabbitMQ.Client;
 using System.Text;
 using System.Text.Json;
 
@@ -17,7 +18,7 @@ public sealed class QueueService : IDisposable
 		_connectionFactory = new ConnectionFactory() { HostName = "localhost" };
 		_connection = _connectionFactory.CreateConnection();
 		_channel = _connection.CreateModel();
-		_channel.QueueDeclare(queue: "weather_control_request",
+		_channel.QueueDeclare(queue: Messages.Constants.WeatherControlRequestQueue,
 								durable: true,
 								exclusive: false,
 								autoDelete: false,
@@ -30,13 +31,13 @@ public sealed class QueueService : IDisposable
 		_connection.Dispose();
 	}
 
-	public void PublishWeatherControlRequest(DateOnly date, int temperature)
+	public void PublishWeatherControlRequest(WeatherForecastRequest message)
 	{
-		_logger.LogInformation("Publishing weather control request: {date}, {temperature}", date, temperature);
+		_logger.LogInformation("Publishing weather control request: {date}, {temperature}", message.Date, message.Temperature);
 
-		var body = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new { date, temperature }));
+		var body = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(message));
 		_channel.BasicPublish(exchange: "",
-								routingKey: "weather_control_request",
+								routingKey: Messages.Constants.WeatherControlRequestQueue,
 								basicProperties: null,
 								body: body);
 	}

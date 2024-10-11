@@ -33,6 +33,6 @@ public class WeatherForecastController : ControllerBase
 		if (date == null || temperature == null)
 			throw new ArgumentException("Date and temperature are required.");
 
-		_queueService.PublishWeatherControlRequest(date.Value, temperature.Value);
+		_queueService.PublishWeatherControlRequest(new(date.Value, temperature.Value));
 	}
 }
